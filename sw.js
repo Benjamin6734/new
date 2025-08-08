@@ -9,9 +9,9 @@ const urlsToCache = [
   '/monthly_report.html',
   '/export_report.html',
   '/majina.json',
-  '/manifest.json',
-  '/rsz_capture.png',
-  '/app.js'
+  '/manifest.json', // Hakikisha manifest.json imo hapa
+  '/rsz_capture.png', // Hakikisha aikoni imo hapa
+  '/app.js' // Ikiwa una faili ya app.js
 ];
 
 // Install event - cache everything
@@ -33,7 +33,8 @@ self.addEventListener('fetch', event => {
           return fetchRes;
         });
       }).catch(() => {
-        return caches.match('/index.html');
+        // Fallback to index.html if offline and requested resource not in cache
+        return caches.match('/index.html'); 
       });
     })
   );
