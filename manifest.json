@@ -8,12 +8,12 @@
   "theme_color": "#2196F3",
   "icons": [
     {
-      "src": "/rsz_capture.png",
+      "src": "rsz_capture.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/rsz_capture.png",
+      "src": "rsz_capture.png",
       "sizes": "512x512",
       "type": "image/png"
     }
