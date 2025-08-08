@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingia - Mfumo wa Mahudhurio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /*
+        Hii ni CSS kwa ajili ya ukurasa huu wa kuingia.
+        */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f2f5; /* Rangi ya background tulivu */
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Modal Styling */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            width: 90%;
+            max-width: 300px;
+        }
+
+        .modal-content button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-top: 15px;
+            cursor: pointer;
+        }
+
+        .login-card {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .login-card h1 {
+            font-size: 2em;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        .login-card p {
+            font-size: 1em;
+            color: #777;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        .login-btn {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s ease;
+        }
+
+        .login-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .register-link {
+            display: block;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .register-link:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #777;
+        }
+
+        /* CSS kwa ajili ya simu (responsive design) */
+        @media (max-width: 768px) {
+            .login-card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <h1>Ingia</h1>
+    <p>Ingiza maelezo yako ya kuingia ili uendelee.</p>
+
+    <div class="input-group">
+        <label for="username">Jina la Mtumiaji:</label>
+        <input type="text" id="username" name="username">
+    </div>
+
+    <div class="input-group">
+        <label for="password">Neno la Siri:</label>
+        <input type="password" id="password" name="password">
+    </div>
+
+    <button class="login-btn" onclick="handleLogin()">Ingia</button>
+
+    <a href="./register.html" class="register-link">Huna akaunti? Jisajili sasa</a>
+</div>
+
+<footer class="footer">
+    <p>&copy; <span id="currentYear"></span> Powered by Wella's Life, Haki zote zimehifadhiwa.</p>
+</footer>
+
+<script>
+    // Function ya kuonyesha modal (badala ya alert)
+    function showModal(message) {
+        const modal = document.createElement('div');
+        modal.classList.add('modal');
+        modal.innerHTML = `
+            <div class="modal-content">
+                <p>${message}</p>
+                <button onclick="this.parentElement.parentElement.remove()">Sawa</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // Inafungua database ya IndexedDB
+    async function openDatabase() {
+        return new Promise((resolve, reject) => {
+            const request = window.indexedDB.open("AttendanceAppDB", 1);
+
+            request.onerror = event => {
+                reject("Database error: " + event.target.errorCode);
+            };
+
+            request.onsuccess = event => {
+                resolve(event.target.result);
+            };
+
+            request.onupgradeneeded = event => {
+                const db = event.target.result;
+                db.createObjectStore("users", { keyPath: "username" });
+            };
+        });
+    }
+    
+    // Function ya kuhash neno la siri
+    async function hashPassword(password) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashedPassword = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return hashedPassword;
+    }
+
+    // Function ya kushughulikia kuingia
+    async function handleLogin() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        if (!username || !password) {
+            showModal("Tafadhali jaza sehemu zote.");
+            return;
+        }
+
+        try {
+            const db = await openDatabase();
+            const transaction = db.transaction(["users"], "readonly");
+            const objectStore = transaction.objectStore("users");
+            const request = objectStore.get(username);
+
+            request.onsuccess = async event => {
+                const user = event.target.result;
+                const hashedPassword = await hashPassword(password);
+                if (user && user.password === hashedPassword) {
+                    // Tumia sessionStorage kuhifadhi hali ya mtumiaji
+                    sessionStorage.setItem('isLoggedIn', 'true');
+                    sessionStorage.setItem('loggedInUser', username);
+                    showModal("Umeingia kwa mafanikio! Karibu, " + username);
+                    window.location.href = "./dashboard.html";
+                } else {
+                    showModal("Jina la mtumiaji au neno la siri si sahihi.");
+                }
+            };
+
+            request.onerror = event => {
+                showModal("Kuna tatizo wakati wa kuingia. Jaribu tena.");
+            };
+
+        } catch (error) {
+            showModal("Kuna tatizo la database: " + error);
+        }
+    }
+    
+    // Weka mwaka wa sasa kwenye footer
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>

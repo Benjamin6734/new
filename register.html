@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jisajili - Mfumo wa Mahudhurio</title>
+    <!-- Kuunganisha na font ya Poppins kutoka Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /*
+        CSS kwa ajili ya ukurasa wa kujisajili
+        Inahakikisha muonekano unavutia na rahisi kutumia
+        */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .register-card {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .register-card h1 {
+            font-size: 2em;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        .register-card p {
+            font-size: 1em;
+            color: #777;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        .register-btn {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s ease;
+        }
+
+        .register-btn:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+        
+        .register-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .login-link {
+            display: block;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .login-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Styles for the message box */
+        #messageBox {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            text-align: center;
+            display: none;
+        }
+
+        #messageBox.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        #messageBox.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+<div class="register-card">
+    <h1>Jisajili</h1>
+    <p>Jaza fomu hapa chini kuunda akaunti mpya.</p>
+
+    <div class="input-group">
+        <label for="email">Barua pepe (Jina la Mtumiaji):</label>
+        <input type="email" id="email" name="email">
+    </div>
+
+    <div class="input-group">
+        <label for="password">Neno la Siri:</label>
+        <input type="password" id="password" name="password">
+    </div>
+    
+    <div id="messageBox"></div>
+
+    <button class="register-btn" onclick="handleRegister()">
+        Jisajili
+    </button>
+
+    <a href="login.html" class="login-link">Tayari una akaunti? Ingia</a>
+</div>
+
+<footer class="footer">
+    <p>&copy; <span id="currentYear"></span> Powered by Wella's Life, Haki zote zimehifadhiwa.</p>
+</footer>
+
+<script>
+    /**
+     * Huonyesha ujumbe wa arifa kwenye UI.
+     * @param {string} message Ujumbe wa kuonyeshwa.
+     * @param {string} type Aina ya ujumbe ('success' au 'error').
+     */
+    const showMessage = (message, type) => {
+        const messageBox = document.getElementById('messageBox');
+        messageBox.textContent = message;
+        messageBox.className = type;
+        messageBox.style.display = 'block';
+    };
+
+    /**
+     * Hufungua database ya IndexedDB.
+     * @returns {Promise<IDBDatabase>} Ahadi inayorudisha database.
+     */
+    const openDatabase = () => {
+        return new Promise((resolve, reject) => {
+            const request = window.indexedDB.open("AttendanceAppDB", 1);
+            
+            request.onerror = event => {
+                reject("Database error: " + event.target.errorCode);
+            };
+
+            request.onsuccess = event => {
+                resolve(event.target.result);
+            };
+
+            request.onupgradeneeded = event => {
+                const db = event.target.result;
+                db.createObjectStore("users", { keyPath: "email" });
+            };
+        });
+    };
+    
+    /**
+     * Inahash neno la siri kabla ya kuhifadhiwa.
+     * @param {string} password Neno la siri la kuhash.
+     * @returns {Promise<string>} Ahadi inayorudisha neno la siri lililohash.
+     */
+    async function hashPassword(password) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashedPassword = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return hashedPassword;
+    }
+
+    /**
+     * Inashughulikia mchakato wa usajili wa mtumiaji.
+     */
+    window.handleRegister = async function() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        if (!email || !password) {
+            showMessage("Tafadhali jaza sehemu zote.", 'error');
+            return;
+        }
+
+        try {
+            const db = await openDatabase();
+            const transaction = db.transaction(["users"], "readwrite");
+            const objectStore = transaction.objectStore("users");
+
+            // Angalia kama barua pepe tayari ipo
+            const existingUser = await new Promise((resolve, reject) => {
+                const getRequest = objectStore.get(email);
+                getRequest.onsuccess = () => resolve(getRequest.result);
+                getRequest.onerror = () => reject(getRequest.error);
+            });
+
+            if (existingUser) {
+                showMessage("Barua pepe hii tayari imesajiliwa.", 'error');
+                return;
+            }
+
+            // Hifadhi data ndani ya transaction ile ile
+            const hashedPassword = await hashPassword(password);
+            const newUser = { email: email, password: hashedPassword };
+
+            await new Promise((resolve, reject) => {
+                const addRequest = objectStore.add(newUser);
+                addRequest.onsuccess = () => resolve();
+                addRequest.onerror = () => reject(addRequest.error);
+            });
+            
+            showMessage("Usajili umefanikiwa! Sasa unaweza kuingia.", 'success');
+            setTimeout(() => {
+                window.location.href = "login.html";
+            }, 2000);
+
+        } catch (error) {
+            showMessage(`Kosa la database: ${error.message || error}`, 'error');
+            console.error("IndexedDB error:", error);
+        }
+    };
+
+    // Weka mwaka wa sasa kwenye footer
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>

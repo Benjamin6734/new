@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mfumo wa Mahudhurio - Dashibodi</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Animated gradient background: Yellow, Light Blue, Light Green, Blue */
+            background: linear-gradient(135deg, #FFEB3B, #42A5F5, #8BC34A, #2196F3);
+            background-size: 400% 400%;
+            animation: gradientAnimation 15s ease infinite;
+            min-height: 100vh; /* Ensure background covers full height */
+            display: flex;
+            flex-direction: column; /* Added for vertical centering */
+            align-items: center;
+            justify-content: center;
+            padding: 20px; /* Added padding to body for spacing */
+        }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Loading spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .attendance-status {
+            @apply p-2 rounded-md font-semibold cursor-pointer text-sm;
+        }
+        .present {
+            @apply bg-green-500 text-white;
+        }
+        .absent {
+            @apply bg-red-500 text-white;
+        }
+        .excused {
+            @apply bg-yellow-400 text-gray-800;
+        }
+        .bordered-table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .bordered-table th, .bordered-table td {
+            border: 1px solid #d1d5db;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="container mx-auto bg-white rounded-xl shadow-2xl p-6 md:p-10 max-w-7xl my-8" style="background-color: rgba(255, 255, 255, 0.5);">
+        
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-200">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-700 mb-4 md:mb-0">Mfumo wa Mahudhurio</h1>
+            <button class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-300 ease-in-out" onclick="logOut()">Toka (Log Out)</button>
+        </header>
+
+        <main class="space-y-8 text-center">
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-800">Karibu Kwenye Dashibodi ya Mahudhurio</h2>
+            <p class="text-gray-700 text-lg">Tumia viungo vilivyo hapa chini kusimamia mahudhurio ya wanafunzi.</p>
+
+            <!-- Kichagua Tarehe na Muhtasari wa Kila Siku -->
+            <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-6 bg-blue-50 p-4 rounded-lg shadow-inner">
+                <div class="w-full md:w-auto">
+                    <label for="attendanceDateInput" class="block text-blue-800 font-semibold mb-1">Chagua Tarehe:</label>
+                    <input type="date" id="attendanceDateInput" class="w-full px-4 py-2 rounded-md border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                </div>
+                <div id="dailySummary" class="text-center text-xl font-bold text-blue-800 w-full md:w-auto p-2"></div>
+            </div>
+
+            <!-- Sehemu ya kutafuta mwanafunzi -->
+            <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-6 mt-8">
+                <input type="text" id="searchStudentInput" placeholder="Tafuta mwanafunzi kwa jina au namba ya usajili" 
+                        class="w-full md:w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm">
+                <button class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-300 ease-in-out w-full md:w-auto" onclick="searchStudent()">Tafuta Mwanafunzi</button>
+            </div>
+
+            <!-- Sehemu ya matokeo ya utafutaji (itaonekana baada ya utafutaji) -->
+            <div id="searchResultsSection" class="mt-8 hidden bg-gray-50 p-6 rounded-xl shadow-lg">
+                <h3 class="text-xl font-semibold text-center text-gray-800 mb-4">Matokeo ya Utafutaji</h3>
+                <div id="searchResultInfo" class="text-center text-gray-600 mb-4 font-medium"></div>
+                <div class="overflow-x-auto rounded-lg shadow-md border border-gray-200">
+                    <table class="bordered-table min-w-full">
+                        <thead class="bg-gray-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Namba ya Usajili</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Jina la Mwanafunzi</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Jinsia</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Mahudhurio leo</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Vitendo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="searchResultBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Matokeo ya utafutaji yatajazwa hapa na JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <button class="mt-6 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors shadow-md" onclick="clearSearchResults()">Futa Matokeo ya Utafutaji</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+                <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 text-lg" onclick="openAddStudentModal()">Ongeza Mwanafunzi Mpya</button>
+                <a href="students_table.html" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 text-lg flex items-center justify-center">Orodha ya Wanafunzi na Mahudhurio</a>
+                <!-- Kitufe cha "Ona Ripoti ya Mwezi" kimeondolewa hapa -->
+                <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 text-lg" onclick="callNames()">Ita Majina (Mahudhurio)</button>
+                <button class="bg-yellow-500 hover:bg-yellow-600 text-gray-800 font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 text-lg" onclick="openUploadModal()">Pakia JSON File</button>
+            </div>
+        </main>
+
+        <footer class="text-center text-gray-500 pt-6 border-t border-gray-200 mt-10">
+            <p>&copy; <span id="currentYear"></span> Powered by Wella's Life, Haki zote zimehifadhiwa.</p>
+        </footer>
+
+    </div>
+
+    <!-- Modals for forms and actions -->
+    <div id="addStudentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center p-4">
+        <div class="relative bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl md:text-2xl font-bold text-blue-700">Sajili Mwanafunzi Mpya</h3>
+                <span class="text-gray-500 text-3xl font-bold leading-none hover:text-gray-800 cursor-pointer" onclick="closeAddStudentModal()">&times;</span>
+            </div>
+            <form id="addStudentForm" class="space-y-4">
+                <div>
+                    <label for="studentName" class="block text-sm font-medium text-gray-700 text-left">Jina la Mwanafunzi:</label>
+                    <input type="text" id="studentName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="studentGender" class="block text-sm font-medium text-gray-700 text-left">Jinsia:</label>
+                    <select id="studentGender" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="" disabled selected>Chagua Jinsia</option>
+                        <option value="M">M</option>
+                        <option value="K">K</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="studentRegNumber" class="block text-sm font-medium text-gray-700 text-left">Namba ya Usajili (Hiari):</label>
+                    <input type="text" id="studentRegNumber" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md">Sajili Mwanafunzi</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="editStudentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center p-4">
+        <div class="relative bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl md:text-2xl font-bold text-blue-700">Hariri Taarifa za Mwanafunzi</h3>
+                <span class="text-gray-500 text-3xl font-bold leading-none hover:text-gray-800 cursor-pointer" onclick="closeEditStudentModal()">&times;</span>
+            </div>
+            <form id="editStudentForm" class="space-y-4">
+                <div>
+                    <label for="editStudentName" class="block text-sm font-medium text-gray-700 text-left">Jina la Mwanafunzi:</label>
+                    <input type="text" id="editStudentName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="editStudentGender" class="block text-sm font-medium text-gray-700 text-left">Jinsia:</label>
+                    <select id="editStudentGender" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="M">M</option>
+                        <option value="K">K</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="editStudentRegNumber" class="block text-sm font-medium text-gray-700 text-left">Namba ya Usajili:</label>
+                    <input type="text" id="editStudentRegNumber" readonly class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md">Hifadhi Mabadiliko</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="callNamesModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center p-4">
+        <div class="relative bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-md text-center">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl md:text-2xl font-bold text-gray-800">Ita Majina</h3>
+                <span class="text-gray-500 text-3xl font-bold leading-none hover:text-gray-800 cursor-pointer" onclick="closeCallNamesModal()">&times;</span>
+            </div>
+            <p id="currentStudentName" class="text-4xl md:text-5xl font-extrabold text-blue-600 my-8"></p>
+            <div class="flex flex-col md:flex-row justify-center gap-4">
+                <button id="presentBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors w-full md:w-1/3 shadow-md">Y</button>
+                <button id="absentBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition-colors w-full md:w-1/3 shadow-md">H</button>
+                <button id="excusedBtn" class="bg-yellow-500 hover:bg-yellow-600 text-gray-800 font-bold py-3 px-6 rounded-lg transition-colors w-full md:w-1/3 shadow-md">R</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="uploadJsonModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center p-4">
+        <div class="relative bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl md:text-2xl font-bold text-gray-800">Pakia JSON File</h3>
+                <span class="text-gray-500 text-3xl font-bold leading-none hover:text-gray-800 cursor-pointer" onclick="closeUploadModal()">&times;</span>
+            </div>
+            <p class="text-gray-600 mb-4 text-left">Pakia faili ya JSON iliyo na data ya wanafunzi.</p>
+            <div class="space-y-4">
+                <input type="file" id="jsonFileInput" accept=".json" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md" onclick="uploadJsonFile()">Pakia</button>
+            </div>
+            <hr class="my-6 border-gray-200">
+            <button class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors shadow-md" onclick="toggleJsonExample()">Ona Mfumo wa JSON</button>
+            <div id="jsonExample" class="mt-4 p-4 bg-gray-100 rounded-md text-sm text-gray-700 overflow-x-auto hidden text-left">
+                <pre><code>[
+    {
+        "regNumber": "12345",
+        "name": "Jane Doe",
+        "gender": "K",
+        "attendance": {
+            "2023-10-25": "Kuwepo"
+        }
+    },
+    {
+        "regNumber": "67890",
+        "name": "John Smith",
+        "gender": "M",
+        "attendance": {
+            "2023-10-25": "Hajakuwepo"
+        }
+    }
+]
+</code></pre>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Check if IndexedDB is supported by the browser
+        if (!window.indexedDB) {
+            alert("Kivinjari chako hakitegemezi IndexedDB. Tafadhali tumia kivinjari cha kisasa.");
+        }
+
+        const dbName = 'attendanceDB';
+        const dbVersion = 1;
+        let db;
+
+        // Automatically selects today's date
+        let selectedDate = new Date().toISOString().slice(0, 10);
+        let students = [];
+        let currentStudentIndex = 0;
+        let attendanceDateInput;
+
+        // Hali mpya za upangaji. Tunatumia 'gender' kama ufunguo wa kwanza wa kupanga, na 'name' kama wa pili.
+        let sortDirection = {
+            'gender': 'asc',
+            'name': 'asc',
+            'regNumber': 'asc'
+        };
+        let currentSortKey = 'gender';
+
+        // Initialize the database connection
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName, dbVersion);
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    // Create 'students' object store with 'id' as keyPath and autoIncrement
+                    const studentStore = db.createObjectStore('students', { keyPath: 'id', autoIncrement: true });
+                    // Create an index on 'regNumber' to ensure uniqueness
+                    studentStore.createIndex('regNumber', 'regNumber', { unique: true });
+                    console.log('IndexedDB: Object store "students" created successfully.');
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log('IndexedDB: Database opened successfully.');
+                    loadStudents();
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB: Database error:", event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        // Function to sort the list of students
+        function sortStudents(key) {
+            if (currentSortKey === key) {
+                sortDirection[key] = sortDirection[key] === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortKey = key;
+                sortDirection[key] = 'asc';
+            }
+
+            students.sort((a, b) => {
+                if (currentSortKey === 'gender') {
+                    const genderOrder = { 'M': 1, 'K': 2 };
+                    const genderA = genderOrder[String(a.gender || '').toUpperCase()];
+                    const genderB = genderOrder[String(b.gender || '').toUpperCase()];
+
+                    if (genderA !== genderB) {
+                        return sortDirection['gender'] === 'asc' ? genderA - genderB : genderB - genderA;
+                    }
+                    const nameA = String(a.name || '').toUpperCase();
+                    const nameB = String(b.name || '').toUpperCase();
+                    if (nameA < nameB) return -1;
+                    if (nameA > nameB) return 1;
+                    return 0;
+                } else if (currentSortKey === 'name') {
+                    const nameA = String(a.name || '').toUpperCase();
+                    const nameB = String(b.name || '').toUpperCase();
+                    if (nameA < nameB) return sortDirection['name'] === 'asc' ? -1 : 1;
+                    if (nameA > nameB) return sortDirection['name'] === 'asc' ? 1 : -1;
+
+                    const genderOrder = { 'M': 1, 'K': 2 };
+                    const genderA = genderOrder[String(a.gender || '').toUpperCase()];
+                    const genderB = genderOrder[String(b.gender || '').toUpperCase()];
+                    if (genderA !== genderB) {
+                        return genderA - genderB;
+                    }
+                    return 0;
+                } else if (currentSortKey === 'regNumber') {
+                    const regA = String(a.regNumber || '').toUpperCase();
+                    const regB = String(b.regNumber || '').toUpperCase();
+                    if (regA < regB) return sortDirection['regNumber'] === 'asc' ? -1 : 1;
+                    if (regA > regB) return sortDirection['regNumber'] === 'asc' ? 1 : -1;
+                    return 0;
+                }
+                return 0;
+            });
+        }
+
+        // Load all students from IndexedDB
+        async function loadStudents() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['students'], 'readonly');
+                const store = transaction.objectStore('students');
+                const request = store.getAll();
+
+                request.onsuccess = (event) => {
+                    students = event.target.result;
+                    console.log('IndexedDB: Students loaded:', students);
+                    sortStudents('gender');
+                    updateDailySummary();
+                    resolve(students);
+                };
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB: Error loading students:", event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        // Update daily attendance summary on the dashboard
+        function updateDailySummary() {
+            let presentCount = 0;
+            let absentCount = 0;
+            let excusedCount = 0;
+
+            students.forEach(student => {
+                const attendanceStatus = student.attendance[selectedDate] || 'Hajachaguliwa';
+                switch (attendanceStatus) {
+                    case 'Kuwepo': presentCount++; break;
+                    case 'Hajakuwepo': absentCount++; break;
+                    case 'Ruhusa': excusedCount++; break;
+                }
+            });
+            document.getElementById('dailySummary').textContent = `Kuwepo: ${presentCount} | Hajakuwepo: ${absentCount} | Ruhusa: ${excusedCount}`;
+        }
+
+
+        // Save a new student to IndexedDB
+        async function addStudent(event) {
+            event.preventDefault();
+            const studentName = document.getElementById('studentName').value.trim();
+            const studentGender = document.getElementById('studentGender').value;
+            const studentRegNumber = document.getElementById('studentRegNumber').value.trim();
+
+            if (!studentName || !studentGender) {
+                alert("Tafadhali jaza jina la mwanafunzi na jinsia.");
+                return;
+            }
+
+            const newStudent = {
+                name: studentName,
+                gender: studentGender,
+                // Use provided regNumber or generate a unique one if not provided
+                regNumber: studentRegNumber || `REG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                attendance: {}
+            };
+
+            const transaction = db.transaction(['students'], 'readwrite');
+            const store = transaction.objectStore('students');
+
+            // Check if regNumber already exists before adding
+            try {
+                const existingStudent = await new Promise((resolve, reject) => {
+                    const getRequest = store.index('regNumber').get(newStudent.regNumber);
+                    getRequest.onsuccess = (e) => resolve(e.target.result);
+                    getRequest.onerror = (e) => reject(e.target.error);
+                });
+
+                if (existingStudent) {
+                    alert(`Kosa: Namba ya Usajili '${newStudent.regNumber}' inatumika tayari. Tafadhali tumia namba tofauti.`);
+                    return;
+                }
+            } catch (error) {
+                console.error("Error checking existing regNumber:", error);
+                alert("Kosa wakati wa kukagua namba ya usajili.");
+                return;
+            }
+
+            const request = store.add(newStudent);
+
+            request.onsuccess = () => {
+                console.log('IndexedDB: Student added successfully!');
+                alert("Mwanafunzi amesajiliwa kwa ufanisi!");
+                closeAddStudentModal();
+                loadStudents();
+                clearSearchResults();
+            };
+
+            request.onerror = (event) => {
+                console.error("IndexedDB: Error adding student:", event.target.error);
+                alert("Kosa: Namba ya Usajili huenda inatumika tayari au kuna tatizo la hifadhidata.");
+            };
+        }
+
+        // Update a student in IndexedDB (needed for 'Ita Majina' to save attendance)
+        async function updateAttendance(studentId, status) {
+            const transaction = db.transaction(['students'], 'readwrite');
+            const store = transaction.objectStore('students');
+            const request = store.get(studentId);
+
+            request.onsuccess = (event) => {
+                const student = event.target.result;
+                if (student) {
+                    student.attendance[selectedDate] = status;
+                    const putRequest = store.put(student);
+
+                    putRequest.onsuccess = () => {
+                        console.log(`IndexedDB: Attendance for student ${student.name} (${studentId}) updated to ${status} for ${selectedDate}.`);
+                        // Find and update the student in the local 'students' array
+                        const index = students.findIndex(s => s.id === studentId);
+                        if (index !== -1) {
+                            students[index].attendance[selectedDate] = status;
+                        }
+                        updateDailySummary();
+                        const searchInput = document.getElementById('searchStudentInput');
+                        if (searchInput && searchInput.value.trim() !== '') {
+                            searchStudent();
+                        }
+                    };
+                    putRequest.onerror = (event) => {
+                        console.error("IndexedDB: Error updating attendance:", event.target.error);
+                    };
+                }
+            };
+            request.onerror = (event) => {
+                console.error("IndexedDB: Error fetching student for attendance update:", event.target.error);
+            };
+        }
+
+        // Delete a student from IndexedDB
+        async function deleteStudent(studentId) {
+            const confirmed = confirm("Una uhakika unataka kumfuta mwanafunzi huyu?");
+            if (confirmed) {
+                const transaction = db.transaction(['students'], 'readwrite');
+                const store = transaction.objectStore('students');
+                const request = store.delete(studentId);
+
+                request.onsuccess = () => {
+                    console.log('IndexedDB: Student deleted successfully!');
+                    // Remove the student from the local 'students' array
+                    students = students.filter(s => s.id !== studentId);
+                    updateDailySummary();
+                    const searchInput = document.getElementById('searchStudentInput');
+                    if (searchInput && searchInput.value.trim() !== '') {
+                        searchStudent();
+                    } else {
+                        clearSearchResults();
+                    }
+                };
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB: Error deleting student:", event.target.error);
+                    alert("Kosa wakati wa kumfuta mwanafunzi.");
+                };
+            }
+        }
+
+        // Save Edited Student
+        async function saveEditedStudent(event) {
+            event.preventDefault();
+            const editedName = document.getElementById('editStudentName').value.trim();
+            const editedGender = document.getElementById('editStudentGender').value;
+            const editedRegNumber = document.getElementById('editStudentRegNumber').value.trim(); // Reg number is readonly, but good to get
+            const studentId = parseInt(document.getElementById('editStudentForm').dataset.id);
+
+            if (!editedName || !editedGender) {
+                alert("Tafadhali jaza jina la mwanafunzi na jinsia.");
+                return;
+            }
+
+            const transaction = db.transaction(['students'], 'readwrite');
+            const store = transaction.objectStore('students');
+            const request = store.get(studentId);
+
+            request.onsuccess = (event) => {
+                const studentToUpdate = event.target.result;
+                if (studentToUpdate) {
+                    studentToUpdate.name = editedName;
+                    studentToUpdate.gender = editedGender;
+                    // regNumber is not updated here as it's readonly and unique
+
+                    const putRequest = store.put(studentToUpdate);
+
+                    putRequest.onsuccess = () => {
+                        console.log('IndexedDB: Student updated successfully!');
+                        closeEditStudentModal();
+                        loadStudents(); // Reload all students to update local array and summary
+                        const searchInput = document.getElementById('searchStudentInput');
+                        if (searchInput && searchInput.value.trim() !== '') {
+                            searchStudent();
+                        }
+                    };
+
+                    putRequest.onerror = (event) => {
+                        console.error("IndexedDB: Error updating student:", event.target.error);
+                        alert("Kosa wakati wa kuhifadhi mabadiliko.");
+                    };
+                } else {
+                    console.error("Student not found for editing with ID:", studentId);
+                    alert("Mwanafunzi hakupatikana kwa kuhariri.");
+                }
+            };
+            request.onerror = (event) => {
+                console.error("IndexedDB: Error fetching student for edit:", event.target.error);
+            };
+        }
+
+
+        // Handle JSON file upload
+        function uploadJsonFile() {
+            const fileInput = document.getElementById('jsonFileInput');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Tafadhali chagua faili ya JSON.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const content = e.target.result;
+                try {
+                    const data = JSON.parse(content);
+                    if (!Array.isArray(data)) {
+                        alert("Faili ya JSON lazima iwe 'array' ya wanafunzi.");
+                        return;
+                    }
+
+                    const transaction = db.transaction(['students'], 'readwrite');
+                    const store = transaction.objectStore('students');
+
+                    let newStudentsCount = 0;
+                    let existingStudentsCount = 0;
+                    let errorsCount = 0;
+
+                    for (const student of data) {
+                        // Ensure student object has necessary properties
+                        if (!student.name || !student.gender) {
+                            console.warn("Skipping student due to missing name or gender:", student);
+                            errorsCount++;
+                            continue;
+                        }
+
+                        // Generate ID if not present (IndexedDB will use autoIncrement, but useful for initial data)
+                        if (!student.id) {
+                            student.id = Date.now() + Math.random();
+                        }
+                        // Generate a regNumber if not present
+                        if (!student.regNumber) {
+                            student.regNumber = `REG-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+                        } else {
+                            student.regNumber = String(student.regNumber).trim(); // Ensure it's a string and trimmed
+                        }
+
+                        try {
+                            // Check if a student with the same regNumber already exists
+                            const existingStudentByReg = await new Promise((resolve, reject) => {
+                                const getRequest = store.index('regNumber').get(student.regNumber);
+                                getRequest.onsuccess = (e) => resolve(e.target.result);
+                                getRequest.onerror = (e) => reject(e.target.error);
+                            });
+
+                            if (existingStudentByReg) {
+                                // Optionally update existing student or skip
+                                console.warn(`Mwanafunzi na Namba ya Usajili '${student.regNumber}' tayari yupo, akirukwa.`);
+                                existingStudentsCount++;
+                                continue; // Skip adding if regNumber already exists
+                            }
+
+                            const addRequest = store.add(student);
+                            await new Promise((resolve, reject) => {
+                                addRequest.onsuccess = () => {
+                                    newStudentsCount++;
+                                    resolve();
+                                };
+                                addRequest.onerror = (e) => {
+                                    console.error(`Kosa wakati wa kuongeza mwanafunzi ${student.name} (Reg: ${student.regNumber}):`, e.target.error);
+                                    errorsCount++;
+                                    resolve(); // Resolve to continue loop even on error
+                                };
+                            });
+                        } catch (error) {
+                            console.error("Error during student processing:", error);
+                            errorsCount++;
+                        }
+                    }
+
+                    transaction.oncomplete = () => {
+                        let message = `${newStudentsCount} wanafunzi wapya wameongezwa kwa ufanisi.`;
+                        if (existingStudentsCount > 0) {
+                            message += ` ${existingStudentsCount} wanafunzi walirukwa kwa sababu nambari zao za usajili tayari zipo.`;
+                        }
+                        if (errorsCount > 0) {
+                            message += ` ${errorsCount} wanafunzi walishindwa kuongezwa kutokana na makosa.`;
+                        }
+                        alert(message);
+                        closeUploadModal();
+                        loadStudents();
+                        clearSearchResults();
+                    };
+
+                    transaction.onerror = (event) => {
+                        console.error("Transaction error during JSON upload:", event.target.error);
+                        alert("Kosa la muamala wakati wa kupakia faili ya JSON.");
+                    };
+
+                } catch (error) {
+                    alert("Faili si JSON halali au ina muundo mbaya.");
+                    console.error("Kosa la kupakua faili ya JSON:", error);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Search functionality
+        function searchStudent() {
+            const searchTerm = document.getElementById('searchStudentInput').value.toLowerCase().trim();
+            const searchResultBody = document.getElementById('searchResultBody');
+            const searchResultInfo = document.getElementById('searchResultInfo');
+            const searchResultsSection = document.getElementById('searchResultsSection');
+            searchResultBody.innerHTML = ''; // Clear previous results
+
+            if (searchTerm === '') {
+                searchResultsSection.classList.add('hidden');
+                searchResultInfo.textContent = '';
+                return;
+            }
+
+            const filteredStudents = students.filter(student =>
+                student.name.toLowerCase().includes(searchTerm) ||
+                (student.regNumber && student.regNumber.toLowerCase().includes(searchTerm))
+            );
+
+            if (filteredStudents.length > 0) {
+                searchResultsSection.classList.remove('hidden');
+                searchResultInfo.textContent = `Wanafunzi ${filteredStudents.length} walipatikana.`;
+                filteredStudents.forEach(student => {
+                    const row = document.createElement('tr');
+                    const attendanceStatus = student.attendance[selectedDate] || 'Hajachaguliwa';
+                    let statusClass = '';
+                    let statusText = '';
+
+                    switch (attendanceStatus) {
+                        case 'Kuwepo':
+                            statusClass = 'present';
+                            statusText = 'Y';
+                            break;
+                        case 'Hajakuwepo':
+                            statusClass = 'absent';
+                            statusText = 'H';
+                            break;
+                        case 'Ruhusa':
+                            statusClass = 'excused';
+                            statusText = 'R';
+                            break;
+                        default:
+                            statusText = '...'; // Not yet marked
+                    }
+
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.regNumber || 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${student.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${student.gender}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="attendance-status ${statusClass}">${statusText}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="openEditStudentModal(${student.id})">Hariri</button>
+                            <button class="text-red-600 hover:text-red-900" onclick="deleteStudent(${student.id})">Futa</button>
+                        </td>
+                    `;
+                    searchResultBody.appendChild(row);
+                });
+            } else {
+                searchResultsSection.classList.remove('hidden');
+                searchResultInfo.textContent = 'Hakuna wanafunzi waliopatikana kulingana na utafutaji wako.';
+            }
+        }
+
+
+        function clearSearchResults() {
+            document.getElementById('searchStudentInput').value = '';
+            document.getElementById('searchResultsSection').classList.add('hidden');
+            document.getElementById('searchResultInfo').textContent = '';
+            document.getElementById('searchResultBody').innerHTML = '';
+        }
+
+        // Modal functions
+        function openAddStudentModal() {
+            document.getElementById('addStudentModal').style.display = 'flex';
+            document.getElementById('studentName').focus(); // Focus on the first input field
+        }
+
+        function closeAddStudentModal() {
+            document.getElementById('addStudentModal').style.display = 'none';
+            document.getElementById('addStudentForm').reset();
+        }
+
+        function openEditStudentModal(studentId) {
+            const student = students.find(s => s.id === studentId);
+            if (student) {
+                document.getElementById('editStudentName').value = student.name;
+                document.getElementById('editStudentGender').value = student.gender;
+                document.getElementById('editStudentRegNumber').value = student.regNumber;
+                document.getElementById('editStudentForm').dataset.id = studentId;
+                document.getElementById('editStudentModal').style.display = 'flex';
+                document.getElementById('editStudentName').focus();
+            }
+        }
+
+        function closeEditStudentModal() {
+            document.getElementById('editStudentModal').style.display = 'none';
+            document.getElementById('editStudentForm').reset();
+            delete document.getElementById('editStudentForm').dataset.id;
+        }
+
+        function openUploadModal() {
+            document.getElementById('uploadJsonModal').style.display = 'flex';
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadJsonModal').style.display = 'none';
+            document.getElementById('jsonFileInput').value = '';
+            document.getElementById('jsonExample').classList.add('hidden'); // Hide example when closing
+        }
+
+        function toggleJsonExample() {
+            const exampleDiv = document.getElementById('jsonExample');
+            exampleDiv.classList.toggle('hidden');
+        }
+
+        // Call Names functionality
+        function callNames() {
+            if (students.length === 0) {
+                alert("Hakuna wanafunzi waliosajiliwa.");
+                return;
+            }
+            // Filter out students who already have attendance marked for the selected date
+            const unmarkedStudents = students.filter(student => !student.attendance[selectedDate]);
+
+            if (unmarkedStudents.length === 0) {
+                alert("Mahudhurio ya wanafunzi wote kwa tarehe hii tayari yamerekodiwa.");
+                return;
+            }
+
+            // Sort unmarked students before starting call names
+            unmarkedStudents.sort((a, b) => {
+                // Prefer sorting by gender, then name
+                const genderOrder = { 'M': 1, 'K': 2 };
+                const genderA = genderOrder[String(a.gender || '').toUpperCase()];
+                const genderB = genderOrder[String(b.gender || '').toUpperCase()];
+
+                if (genderA !== genderB) {
+                    return genderA - genderB;
+                }
+
+                const nameA = String(a.name || '').toUpperCase();
+                const nameB = String(b.name || '').toUpperCase();
+                if (nameA < nameB) return -1;
+                if (nameA > nameB) return 1;
+                return 0;
+            });
+
+            studentsToCall = unmarkedStudents; // Use a dedicated array for call names session
+            currentStudentIndex = 0;
+            document.getElementById('callNamesModal').style.display = 'flex';
+            displayCurrentStudentForCall();
+        }
+
+        let studentsToCall = []; // Array to hold students for the current call names session
+
+        function closeCallNamesModal() {
+            document.getElementById('callNamesModal').style.display = 'none';
+            currentStudentIndex = 0; // Reset index
+            studentsToCall = []; // Clear the session array
+            updateDailySummary(); // Ensure summary is updated after closing
+        }
+
+        function displayCurrentStudentForCall() {
+            if (currentStudentIndex < studentsToCall.length) {
+                document.getElementById('currentStudentName').textContent = studentsToCall[currentStudentIndex].name;
+            } else {
+                document.getElementById('currentStudentName').textContent = "Umalizika.";
+                alert("Mahudhurio yote yamekamilika kwa wanafunzi ambao hawakuwa wametiwa alama.");
+                closeCallNamesModal(); // Automatically close when finished
+            }
+        }
+
+        async function handleAttendanceUpdateFromCall(status) {
+            if (currentStudentIndex < studentsToCall.length) {
+                const studentId = studentsToCall[currentStudentIndex].id;
+                await updateAttendance(studentId, status); // Await the update
+                currentStudentIndex++;
+                displayCurrentStudentForCall();
+            }
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            openDatabase().then(() => {
+                attendanceDateInput = document.getElementById('attendanceDateInput');
+                attendanceDateInput.value = selectedDate; // Set default date to today
+                attendanceDateInput.addEventListener('change', (event) => {
+                    selectedDate = event.target.value;
+                    updateDailySummary();
+                    // If search results are visible, update them for the new date
+                    const searchInput = document.getElementById('searchStudentInput');
+                    if (searchInput && searchInput.value.trim() !== '') {
+                        searchStudent();
+                    }
+                });
+                updateDailySummary(); // Initial summary update
+            });
+
+            document.getElementById('addStudentForm').addEventListener('submit', addStudent);
+            document.getElementById('editStudentForm').addEventListener('submit', saveEditedStudent);
+
+            // Add event listeners for call names buttons
+            document.getElementById('presentBtn').addEventListener('click', () => handleAttendanceUpdateFromCall('Kuwepo'));
+            document.getElementById('absentBtn').addEventListener('click', () => handleAttendanceUpdateFromCall('Hajakuwepo'));
+            document.getElementById('excusedBtn').addEventListener('click', () => handleAttendanceUpdateFromCall('Ruhusa'));
+
+            // Set current year in footer
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+        });
+
+
+        // Function to handle logging out
+        function logOut() {
+            window.location.href = "index.html";
+        }
+    </script>
+</body>
+</html>

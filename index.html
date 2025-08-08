@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mfumo wa Mahudhurio</title>
+    <!-- Kuunganisha na font ya Poppins kutoka Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    
+    <!-- Kuunganisha na Manifest kwa ajili ya PWA -->
+    <link rel="manifest" href="manifest.json">
+    <!-- Meta tags za PWA -->
+    <meta name="theme-color" content="#007bff"> <!-- Rangi ya theme kwa Android/Windows -->
+    <meta name="apple-mobile-web-app-capable" content="yes"> <!-- Ruhusu iOS kuonekana kama app kamili -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"> <!-- Staili ya status bar kwa iOS -->
+    <meta name="apple-mobile-web-app-title" content="Mahudhurio App"> <!-- Jina la app kwa iOS home screen -->
+    <link rel="apple-touch-icon" href="/icons/apple-icon-180.png"> <!-- Ikoni kwa iOS -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/android-icon-192.png"> <!-- Ikoni kwa Android -->
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/android-icon-512.png"> <!-- Ikoni kubwa kwa Android -->
+
+    <style>
+        /*
+        CSS ya kodi hii
+        Hapa ndipo tunapopanga jinsi ukurasa unavyoonekana
+        */
+        body {
+            font-family: 'Poppins', sans-serif;
+            /* Animated gradient background: Yellow, Light Blue, Light Green, Blue */
+            background: linear-gradient(135deg, #FFEB3B, #42A5F5, #8BC34A, #2196F3);
+            background-size: 400% 400%; /* Make the gradient larger than the viewport */
+            animation: gradientAnimation 15s ease infinite; /* Animate the background position */
+            min-height: 100vh; /* Ensure background covers full height */
+            display: flex;
+            flex-direction: column; /* Panga vitu kwa wima */
+            justify-content: center;
+            align-items: center;
+            color: #333;
+            /* Removed margin, padding, box-sizing as they are now handled by background and flex */
+        }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+            flex-grow: 1; /* Ruhusu kontena kuchukua nafasi iliyobaki */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px; /* Ongeza padding kwa simu ndani ya kontena */
+            box-sizing: border-box; /* Hakikisha padding haiharibu muundo */
+        }
+
+        .header {
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #007bff; /* Rangi ya bluu ya kuvutia */
+            margin: 0;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            color: #555;
+        }
+
+        .card-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap; /* Husaidia kadi kushuka kwenye mstari mwingine kwenye simu */
+        }
+
+        .card {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 220px;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.5em;
+            color: #007bff;
+        }
+
+        .card p {
+            font-size: 1em;
+            color: #777;
+        }
+
+        .card button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .card button:hover {
+            background-color: #0056b3;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #777;
+        }
+        
+        /* CSS kwa ajili ya simu (responsive design) */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em; /* Punguza ukubwa wa kichwa */
+            }
+            .header p {
+                font-size: 1em; /* Punguza ukubwa wa maelezo */
+            }
+            .card-container {
+                flex-direction: column;
+                gap: 15px; /* Punguza nafasi kati ya kadi */
+            }
+            .card {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>Mfumo wa Mahudhurio</h1>
+        <p>Shule ya Msingi Mabatini</p>
+    </div>
+    
+    <div class="card-container">
+        <!-- Kadi ya kuingia kwenye akaunti -->
+        <div class="card">
+            <h2>Ingia</h2>
+            <p>Tayari una akaunti? Ingia ili uendelee na kazi zako.</p>
+            <button onclick="window.location.href='login.html'">Ingia</button>
+        </div>
+        
+        <!-- Kadi ya kujisajili akaunti mpya -->
+        <div class="card">
+            <h2>Jisajili</h2>
+            <p>Huna akaunti? Jisajili sasa kuanza kutumia mfumo.</p>
+            <button onclick="window.location.href='register.html'">Jisajili</button>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <p>&copy; <span id="currentYear"></span> Powered by Wella's Life, Haki zote zimehifadhiwa.</p>
+</footer>
+
+<script>
+    // Sehemu ya JavaScript
+    // Hapa tunaweka mwaka wa sasa kwenye footer
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+    // Usajili wa Service Worker kwa ajili ya PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(registration => {
+            console.log('Service Worker registered successfully:', registration.scope);
+          })
+          .catch(err => {
+            console.log('Service Worker registration failed:', err);
+          });
+      });
+    }
+</script>
+
+</body>
+</html>

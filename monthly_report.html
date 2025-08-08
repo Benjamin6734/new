@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kusafirisha Ripoti ya Mahudhurio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2pdf.js CDN for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Animated gradient background: Yellow, Light Blue, Light Green, Blue */
+            background: linear-gradient(135deg, #FFEB3B, #42A5F5, #8BC34A, #2196F3);
+            background-size: 400% 400%; /* Make the gradient larger than the viewport */
+            animation: gradientAnimation 15s ease infinite; /* Animate the background position */
+            min-height: 100vh; /* Ensure background covers full height */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .bordered-table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .bordered-table th, .bordered-table td {
+            border: 1px solid #d1d5db;
+            padding: 0.3rem; /* Further reduced padding for print */
+            font-size: 0.65rem; /* Even smaller font size for print */
+        }
+        .attendance-cell {
+            width: auto; /* Let content dictate width */
+            max-width: 25px; /* Even smaller max width for daily cells */
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.6rem; /* Smallest font size for daily cells */
+        }
+        .present-day { background-color: #34D399; color: white; }
+        .absent-day { background-color: #EF4444; color: white; }
+        .excused-day { background-color: #FBBF24; color: #374151; }
+        .unknown-day { background-color: #E5E7EB; color: #6B7280; }
+
+        /* Loading spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Hide scrollbars for PDF generation, but allow content to expand */
+        .no-scroll {
+            overflow: visible !important;
+        }
+        /* Specific styles for PDF output to override screen styles */
+        .pdf-output {
+            box-shadow: none !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 0 !important;
+            padding: 10px !important; /* Reduced padding for compact PDF */
+        }
+        .pdf-output table th, .pdf-output table td {
+            white-space: nowrap; /* Prevent wrapping in cells for PDF */
+        }
+        /* Force page break after specific sections for PDF printing */
+        .page-break-after-always {
+            page-break-after: always;
+        }
+        /* Prevent table rows from breaking across pages */
+        .bordered-table tr {
+            page-break-inside: avoid !important;
+        }
+
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="loadingScreen" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex flex-col items-center justify-center z-50">
+        <div class="loader"></div>
+        <p class="text-white text-lg mt-4">Inatengeneza ripoti... Tafadhali subiri.</p>
+    </div>
+
+    <div id="exportContentContainer" class="container mx-auto bg-white rounded-xl shadow-2xl p-6 md:p-10 max-w-7xl my-8" style="background-color: rgba(255, 255, 255, 0.5);">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-200">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-700 mb-4 md:mb-0">Ripoti ya Mahudhurio</h1>
+            <a href="monthly_report.html" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">Rudi Kwenye Ripoti</a>
+        </header>
+
+        <main class="space-y-8">
+            <!-- Sehemu ya Ripoti (kwa ajili ya PDF) -->
+            <div id="reportContent" class="space-y-8 p-4 bg-white rounded-xl">
+                <!-- Muhtasari wa Mahudhurio kwa Jinsia -->
+                <div id="genderSummarySection" class="bg-blue-100 p-6 rounded-xl shadow-lg pdf-output page-break-after-always">
+                    <h3 class="text-xl font-semibold text-center text-blue-800 mb-4">Muhtasari wa Mahudhurio kwa Jinsia (<span id="genderReportDateRange"></span>)</h3>
+                    <div class="overflow-x-auto rounded-lg shadow-md border border-blue-200 no-scroll">
+                        <table class="bordered-table min-w-full">
+                            <thead class="bg-blue-200">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Jinsia</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Kuwepo</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Hajakuwepo</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Ruhusa</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Jumla ya Mahudhurio</th>
+                                </tr>
+                            </thead>
+                            <tbody id="genderSummaryBody" class="bg-white divide-y divide-blue-200">
+                                <!-- Gender summary data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Jedwali la Mahudhurio ya Kina kwa Wavulana -->
+                <div id="boysDetailedReportSection" class="bg-gray-50 p-6 rounded-xl shadow-lg pdf-output mt-8 page-break-after-always">
+                    <h3 class="text-xl font-semibold text-center text-gray-800 mb-4">Ripoti ya Kina ya Mahudhurio (Wavulana) (<span id="boysDetailedReportDateRange"></span>)</h3>
+                    <div class="overflow-x-auto rounded-lg shadow-md border border-gray-200 no-scroll">
+                        <table class="bordered-table min-w-full">
+                            <thead class="bg-gray-200">
+                                <tr id="boysDetailedReportHeader">
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Jina la Mwanafunzi</th>
+                                    <!-- Dates will be appended here -->
+                                </tr>
+                            </thead>
+                            <tbody id="boysDetailedReportBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Detailed attendance data for boys will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Jedwali la Mahudhurio ya Kina kwa Wasichana -->
+                <div id="girlsDetailedReportSection" class="bg-gray-50 p-6 rounded-xl shadow-lg pdf-output mt-8">
+                    <h3 class="text-xl font-semibold text-center text-gray-800 mb-4">Ripoti ya Kina ya Mahudhurio (Wasichana) (<span id="girlsDetailedReportDateRange"></span>)</h3>
+                    <div class="overflow-x-auto rounded-lg shadow-md border border-gray-200 no-scroll">
+                        <table class="bordered-table min-w-full">
+                            <thead class="bg-gray-200">
+                                <tr id="girlsDetailedReportHeader">
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Jina la Mwanafunzi</th>
+                                    <!-- Dates will be appended here -->
+                                </tr>
+                            </thead>
+                            <tbody id="girlsDetailedReportBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Detailed attendance data for girls will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div> <!-- End of reportContent -->
+
+            <!-- Vifungo vya Export -->
+            <div class="flex flex-col md:flex-row justify-center mt-8 space-y-4 md:space-y-0 md:space-x-4">
+                <button class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out transform hover:scale-105" onclick="exportToPdf()">Export to PDF</button>
+                <button class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out transform hover:scale-105" onclick="exportMonthlyReportCsv()">Export Report (CSV)</button>
+                <button class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out transform hover:scale-105" onclick="exportStudentNamesCsv()">Export Majina ya Wanafunzi (CSV)</button>
+            </div>
+        </main>
+
+        <footer class="text-center text-gray-500 pt-6 border-t border-gray-200 mt-10">
+            <p>&copy; <span id="currentYear"></span> Powered by Wella's Life, Haki zote zimehifadhiwa.</p>
+        </footer>
+
+    </div>
+    
+    <script>
+        // Check if IndexedDB is supported by the browser
+        if (!window.indexedDB) {
+            alert("Kivinjari chako hakitegemezi IndexedDB. Tafadhali tumia kivinjari cha kisasa.");
+        }
+
+        const dbName = 'attendanceDB';
+        const dbVersion = 1;
+        let db;
+        let students = [];
+        let selectedStartDate;
+        let selectedEndDate;
+
+        // Initialize the database connection
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName, dbVersion);
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    const studentStore = db.createObjectStore('students', { keyPath: 'id', autoIncrement: true });
+                    studentStore.createIndex('regNumber', 'regNumber', { unique: true });
+                    console.log('IndexedDB: Object store "students" created successfully.');
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log('IndexedDB: Database opened successfully.');
+                    loadStudents();
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB: Database error:", event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        // Load all students from IndexedDB
+        async function loadStudents() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['students'], 'readonly');
+                const store = transaction.objectStore('students');
+                const request = store.getAll();
+
+                request.onsuccess = (event) => {
+                    students = event.target.result;
+                    console.log('IndexedDB: Students loaded:', students);
+                    sortStudents(); // Sort students after loading
+                    
+                    // Get dates from URL parameters
+                    const urlParams = new URLSearchParams(window.location.search);
+                    selectedStartDate = urlParams.get('startDate');
+                    selectedEndDate = urlParams.get('endDate');
+
+                    if (selectedStartDate && selectedEndDate) {
+                        generateReportContent(); // Generate report content for display and export
+                    } else {
+                        // Fallback if no dates in URL (shouldn't happen if monthly_report.html links correctly)
+                        alert("Tarehe za ripoti hazikupatikana. Rudi kwenye ukurasa wa ripoti ya mwezi.");
+                        document.getElementById('loadingScreen').style.display = 'none';
+                        document.getElementById('exportContentContainer').classList.remove('hidden'); // Show container even if no data
+                    }
+                    resolve(students);
+                };
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB: Error loading students:", event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        // Function to sort students (K-M, then A-Z)
+        function sortStudents() {
+            students.sort((a, b) => {
+                // Primary sort by gender: K (Female) then M (Male)
+                const genderOrder = { 'K': 1, 'M': 2 }; // Changed for K-M sorting
+                const genderA = genderOrder[String(a.gender || '').toUpperCase()];
+                const genderB = genderOrder[String(b.gender || '').toUpperCase()];
+
+                if (genderA !== genderB) {
+                    return genderA - genderB;
+                }
+                // Secondary sort by name (A-Z)
+                const nameA = String(a.name || '').toUpperCase();
+                const nameB = String(b.name || '').toUpperCase();
+                if (nameA < nameB) return -1;
+                if (nameA > nameB) return 1;
+                return 0; // Names and genders are the same
+            });
+        }
+
+        // Function to get all days in a given date range
+        function getDaysInRange(startDateStr, endDateStr) {
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+            const days = [];
+            let currentDate = new Date(startDate);
+
+            while (currentDate <= endDate) {
+                days.push(currentDate.toISOString().slice(0, 10));
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            return days;
+        }
+
+        // Function to generate and display the report content (without date inputs)
+        function generateReportContent() {
+            if (!selectedStartDate || !selectedEndDate) {
+                alert("Tarehe za ripoti hazijachaguliwa.");
+                return;
+            }
+
+            const daysInRange = getDaysInRange(selectedStartDate, selectedEndDate);
+
+            // Update report titles
+            const reportDateRangeText = `${selectedStartDate} hadi ${selectedEndDate}`;
+            document.getElementById('genderReportDateRange').textContent = reportDateRangeText;
+            document.getElementById('boysDetailedReportDateRange').textContent = reportDateRangeText;
+            document.getElementById('girlsDetailedReportDateRange').textContent = reportDateRangeText;
+
+            renderOverallGenderSummary(daysInRange);
+            renderDetailedReportsByGender(daysInRange); // New function to render separate tables
+
+            // Show content after rendering
+            document.getElementById('genderSummarySection').classList.remove('hidden');
+            document.getElementById('boysDetailedReportSection').classList.remove('hidden');
+            document.getElementById('girlsDetailedReportSection').classList.remove('hidden');
+
+            // Now we just show the content and let the user click the export button
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('exportContentContainer').classList.remove('hidden');
+        }
+
+        // Render the overall gender-based attendance summary
+        function renderOverallGenderSummary(daysInRange) {
+            const genderSummaryBody = document.getElementById('genderSummaryBody');
+            genderSummaryBody.innerHTML = '';
+
+            if (students.length === 0) {
+                genderSummaryBody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Hakuna wanafunzi waliosajiliwa bado.</td></tr>`;
+                return;
+            }
+
+            let malePresent = 0, maleAbsent = 0, maleExcused = 0;
+            let femalePresent = 0, femaleAbsent = 0, femaleExcused = 0;
+
+            students.forEach(student => {
+                daysInRange.forEach(day => {
+                    const status = student.attendance[day] || 'Hajachaguliwa';
+                    if (String(student.gender || '').toUpperCase() === 'M') {
+                        switch (status) {
+                            case 'Kuwepo': malePresent++; break;
+                            case 'Hajakuwepo': maleAbsent++; break;
+                            case 'Ruhusa': maleExcused++; break;
+                        }
+                    } else if (String(student.gender || '').toUpperCase() === 'K') {
+                        switch (status) {
+                            case 'Kuwepo': femalePresent++; break;
+                            case 'Hajakuwepo': femaleAbsent++; break;
+                            case 'Ruhusa': femaleExcused++; break;
+                        }
+                    }
+                });
+            });
+
+            const maleRow = document.createElement('tr');
+            maleRow.classList.add('hover:bg-gray-100');
+            maleRow.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Wavulana</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-green-700 font-semibold">${malePresent}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-red-700 font-semibold">${maleAbsent}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-yellow-700 font-semibold">${maleExcused}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-blue-700 font-semibold">${malePresent + maleAbsent + maleExcused}</td>
+            `;
+            genderSummaryBody.appendChild(maleRow);
+
+            const femaleRow = document.createElement('tr');
+            femaleRow.classList.add('hover:bg-gray-100');
+            femaleRow.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Wasichana</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-green-700 font-semibold">${femalePresent}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-red-700 font-semibold">${femaleAbsent}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-yellow-700 font-semibold">${femaleExcused}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-blue-700 font-semibold">${femalePresent + femaleAbsent + femaleExcused}</td>
+            `;
+            genderSummaryBody.appendChild(femaleRow);
+        }
+
+        // New function to render detailed reports for boys and girls separately
+        function renderDetailedReportsByGender(daysInRange) {
+            const boysDetailedReportHeader = document.getElementById('boysDetailedReportHeader');
+            const boysDetailedReportBody = document.getElementById('boysDetailedReportBody');
+            const girlsDetailedReportHeader = document.getElementById('girlsDetailedReportHeader');
+            const girlsDetailedReportBody = document.getElementById('girlsDetailedReportBody');
+
+            // Clear previous headers and bodies
+            boysDetailedReportHeader.innerHTML = `<th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Jina la Mwanafunzi</th>`;
+            boysDetailedReportBody.innerHTML = '';
+            girlsDetailedReportHeader.innerHTML = `<th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Jina la Mwanafunzi</th>`;
+            girlsDetailedReportBody.innerHTML = '';
+
+            if (students.length === 0) {
+                boysDetailedReportBody.innerHTML = `<tr><td colspan="${daysInRange.length + 1}" class="px-6 py-4 text-center text-gray-500">Hakuna wanafunzi waliosajiliwa bado.</td></tr>`;
+                girlsDetailedReportBody.innerHTML = `<tr><td colspan="${daysInRange.length + 1}" class="px-6 py-4 text-center text-gray-500">Hakuna wanafunzi waliosajiliwa bado.</td></tr>`;
+                return;
+            }
+
+            // Add dates to both headers
+            daysInRange.forEach(day => {
+                const thBoys = document.createElement('th');
+                thBoys.classList.add('px-2', 'py-3', 'text-center', 'text-xs', 'font-medium', 'text-gray-700', 'uppercase', 'tracking-wider', 'attendance-cell');
+                thBoys.textContent = new Date(day).getDate();
+                boysDetailedReportHeader.appendChild(thBoys);
+
+                const thGirls = document.createElement('th');
+                thGirls.classList.add('px-2', 'py-3', 'text-center', 'text-xs', 'font-medium', 'text-gray-700', 'uppercase', 'tracking-wider', 'attendance-cell');
+                thGirls.textContent = new Date(day).getDate();
+                girlsDetailedReportHeader.appendChild(thGirls);
+            });
+
+            // Filter students by gender
+            const boys = students.filter(student => String(student.gender || '').toUpperCase() === 'M');
+            const girls = students.filter(student => String(student.gender || '').toUpperCase() === 'K');
+
+            // Render boys' data
+            if (boys.length === 0) {
+                boysDetailedReportBody.innerHTML = `<tr><td colspan="${daysInRange.length + 1}" class="px-6 py-4 text-center text-gray-500">Hakuna wavulana waliosajiliwa.</td></tr>`;
+            } else {
+                boys.forEach(student => {
+                    const row = document.createElement('tr');
+                    row.classList.add('hover:bg-gray-100');
+
+                    const nameCell = document.createElement('td');
+                    nameCell.classList.add('px-6', 'py-4', 'whitespace-nowrap', 'text-sm', 'font-medium', 'text-gray-900');
+                    nameCell.textContent = String(student.name || '');
+                    row.appendChild(nameCell);
+
+                    daysInRange.forEach(day => {
+                        const status = student.attendance[day] || 'Hajachaguliwa';
+                        const cell = document.createElement('td');
+                        cell.classList.add('px-2', 'py-2', 'whitespace-nowrap', 'attendance-cell');
+                        
+                        let statusClass = 'unknown-day';
+                        let statusText = '-';
+
+                        switch (status) {
+                            case 'Kuwepo': statusClass = 'present-day'; statusText = 'P'; break;
+                            case 'Hajakuwepo': statusClass = 'absent-day'; statusText = 'A'; break;
+                            case 'Ruhusa': statusClass = 'excused-day'; statusText = 'E'; break;
+                        }
+                        cell.classList.add(statusClass);
+                        cell.textContent = statusText;
+                        row.appendChild(cell);
+                    });
+                    boysDetailedReportBody.appendChild(row);
+                });
+            }
+
+            // Render girls' data
+            if (girls.length === 0) {
+                girlsDetailedReportBody.innerHTML = `<tr><td colspan="${daysInRange.length + 1}" class="px-6 py-4 text-center text-gray-500">Hakuna wasichana waliosajiliwa.</td></tr>`;
+            } else {
+                girls.forEach(student => {
+                    const row = document.createElement('tr');
+                    row.classList.add('hover:bg-gray-100');
+
+                    const nameCell = document.createElement('td');
+                    nameCell.classList.add('px-6', 'py-4', 'whitespace-nowrap', 'text-sm', 'font-medium', 'text-gray-900');
+                    nameCell.textContent = String(student.name || '');
+                    row.appendChild(nameCell);
+
+                    daysInRange.forEach(day => {
+                        const status = student.attendance[day] || 'Hajachaguliwa';
+                        const cell = document.createElement('td');
+                        cell.classList.add('px-2', 'py-2', 'whitespace-nowrap', 'attendance-cell');
+                        
+                        let statusClass = 'unknown-day';
+                        let statusText = '-';
+
+                        switch (status) {
+                            case 'Kuwepo': statusClass = 'present-day'; statusText = 'P'; break;
+                            case 'Hajakuwepo': statusClass = 'absent-day'; statusText = 'A'; break;
+                            case 'Ruhusa': statusClass = 'excused-day'; statusText = 'E'; break;
+                        }
+                        cell.classList.add(statusClass);
+                        cell.textContent = statusText;
+                        row.appendChild(cell);
+                    });
+                    girlsDetailedReportBody.appendChild(row);
+                });
+            }
+        }
+
+
+        // Function to export the current report content to PDF
+        function exportToPdf() {
+            // Show loading indicator explicitly when export is triggered by a button click
+            document.getElementById('loadingScreen').style.display = 'flex';
+            document.getElementById('exportContentContainer').classList.add('hidden');
+
+            const element = document.getElementById('reportContent'); // The div containing all report sections
+            const filename = `ripoti_mahudhurio_${selectedStartDate}_${selectedEndDate}.pdf`;
+
+            const opt = {
+                margin: 0.5, // Reduced all margins to 0.5 inches
+                filename: filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 1.5, // Increased scale for better quality
+                    logging: true,
+                    dpi: 192,
+                    letterRendering: true,
+                    useCORS: true
+                },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' } 
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('exportContentContainer').classList.remove('hidden');
+                alert("Ripoti imesafirishwa kwa ufanisi kama PDF!");
+            }).catch(error => {
+                console.error("Error generating PDF:", error);
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('exportContentContainer').classList.remove('hidden');
+                alert("Kuna kosa limetokea wakati wa kuzalisha PDF. Tafadhali jaribu tena.");
+            });
+        }
+
+        // Function to export monthly report to CSV (renamed for clarity)
+        function exportMonthlyReportCsv() {
+            if (students.length === 0 || !selectedStartDate || !selectedEndDate) {
+                alert("Hakuna data ya kusafirisha au tarehe haijachaguliwa.");
+                return;
+            }
+
+            const daysInRange = getDaysInRange(selectedStartDate, selectedEndDate);
+            const fileNameDate = `${selectedStartDate}_${selectedEndDate}`;
+
+            let csvContent = "Jina la Mwanafunzi,Jinsia"; // Added Jinsia to CSV header
+            daysInRange.forEach(day => {
+                csvContent += `,${new Date(day).getDate()}`; // Add day number to header
+            });
+            csvContent += ",Kuwepo,Hajakuwepo,Ruhusa\n"; // Add summary columns
+
+            students.forEach(student => {
+                let presentCount = 0;
+                let absentCount = 0;
+                let excusedCount = 0;
+                
+                let rowData = `"${String(student.name || '')}","${String(student.gender || '').toUpperCase()}"`; // Added student gender
+                
+                daysInRange.forEach(day => {
+                    const status = student.attendance[day] || 'Hajachaguliwa';
+                    let statusChar = '-';
+                    switch (status) {
+                        case 'Kuwepo': statusChar = 'P'; presentCount++; break;
+                        case 'Hajakuwepo': statusChar = 'A'; absentCount++; break;
+                        case 'Ruhusa': statusChar = 'E'; excusedCount++; break;
+                    }
+                    rowData += `,${statusChar}`;
+                });
+                csvContent += `${rowData},${presentCount},${absentCount},${excusedCount}\n`;
+            });
+
+            const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `ripoti_mahudhurio_${fileNameDate}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            alert("Ripoti ya mahudhurio imesafirishwa kwa ufanisi kama CSV!");
+        }
+
+        // New function to export only student names to CSV
+        function exportStudentNamesCsv() {
+            if (students.length === 0) {
+                alert("Hakuna wanafunzi wa kusafirisha.");
+                return;
+            }
+
+            let csvContent = "Jina la Mwanafunzi,Jinsia\n"; // Added Jinsia to CSV header
+
+            students.forEach(student => {
+                csvContent += `"${String(student.name || '')}","${String(student.gender || '').toUpperCase()}"\n`; // Added student gender
+            });
+
+            const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `majina_ya_wanafunzi_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            alert("Majina ya wanafunzi yamesafirishwa kwa ufanisi kama CSV!");
+        }
+        
+        // Initial setup when DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+            await openDatabase(); 
+        });
+    </script>
+</body>
+</html>

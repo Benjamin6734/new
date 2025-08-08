@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ripoti ya Mahudhurio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Animated gradient background: Yellow, Light Blue, Light Green, Blue */
+            background: linear-gradient(135deg, #FFEB3B, #42A5F5, #8BC34A, #2196F3);
+            background-size: 400% 400%;
+            animation: gradientAnimation 15s ease infinite;
+            min-height: 100vh; /* Ensure background covers full height */
+            display: flex;
+            flex-direction: column; /* Added for vertical centering */
+            align-items: center;
+            justify-content: center;
+            padding: 20px; /* Added padding to body for spacing */
+        }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .bordered-table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .bordered-table th, .bordered-table td {
+            border: 1px solid #d1d5db;
+            padding: 0.5rem; /* Adjust padding for better fit */
+        }
+        /* Styling for attendance cells in monthly report */
+        .attendance-cell {
+            width: 30px; /* Smaller width for daily cells */
+            min-width: 30px; /* Ensure minimum width */
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.75rem; /* Smaller font size */
+        }
+        .present-day {
+            background-color: #34D399; /* Green-300 */
+            color: white;
+        }
+        .absent-day {
+            background-color: #EF4444; /* Red-500 */
+            color: white;
+        }
+        .excused-day {
+            background-color: #FBBF24; /* Yellow-400 */
+            color: #374151; /* Gray-700 */
+        }
+        .unknown-day {
+            background-color: #E5E7EB; /* Gray-200 */
+            color: #6B7280; /* Gray-500 */
+        }
+        /* Loading spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Sticky header for detailed report */
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            background-color: inherit; /* Inherit background from parent tbody/thead */
+            z-index: 10;
+        }
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="mainContent" style="display: block;">
+        <div class="container mx-auto bg-white rounded-xl shadow-2xl p-6 md:p-10 max-w-7xl my-8" style="background-color: rgba(255, 255, 255, 0.5);">
+            
+            <header class="flex flex-col md:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-200">
+                <h1 class="text-3xl md:text-4xl font-extrabold text-blue-700 mb-4 md:mb-0">Ripoti ya Mahudhurio</h1>
+                <a href="dashboard.html" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">Rudi Kwenye Dashibodi</a>
+            </header>
+
+            <main class="space-y-8">
+                <!-- Kichagua Tarehe ya Kuanza na Kumaliza -->
+                <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-6 bg-blue-50 p-4 rounded-lg shadow-inner">
+                    <div class="w-full md:w-auto">
+                        <label for="startDateInput" class="block text-blue-800 font-semibold mb-1">Tarehe ya Kuanza:</label>
+                        <input type="date" id="startDateInput" class="w-full px-4 py-2 rounded-md border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                    </div>
+                    <div class="w-full md:w-auto">
+                        <label for="endDateInput" class="block text-blue-800 font-semibold mb-1">Tarehe ya Kumaliza:</label>
+                        <input type="date" id="endDateInput" class="w-full px-4 py-2 rounded-md border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                    </div>
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-300 ease-in-out w-full md:w-auto" onclick="generateReport()">Tengeneza Ripoti</button>
+                </div>
+
+                <!-- Sehemu ya Ripoti (kwa ajili ya PDF) -->
+                <div id="reportContent" class="space-y-8 p-4 bg-white rounded-xl">
+                    <!-- Muhtasari wa Mahudhurio kwa Jinsia -->
+                    <div id="genderSummarySection" class="hidden bg-blue-100 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-semibold text-center text-blue-800 mb-4">Muhtasari wa Mahudhurio kwa Jinsia (<span id="genderReportDateRange"></span>)</h3>
+                        <div class="overflow-x-auto rounded-lg shadow-md border border-blue-200">
+                            <table class="bordered-table min-w-full">
+                                <thead class="bg-blue-200">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Jinsia</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Kuwepo</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Hajakuwepo</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Ruhusa</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Jumla ya Mahudhurio</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="genderSummaryBody" class="bg-white divide-y divide-blue-200">
+                                    <!-- Gender summary data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Muhtasari wa Ripoti ya Kila Mwanafunzi -->
+                    <div id="monthlySummarySection" class="hidden bg-gray-50 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-semibold text-center text-gray-800 mb-4">Muhtasari wa Mahudhurio kwa Kila Mwanafunzi (<span id="reportDateRange"></span>)</h3>
+                        <div id="monthlySummaryBody" class="overflow-x-auto rounded-lg shadow-md border border-gray-200">
+                            <table class="bordered-table min-w-full">
+                                <thead class="bg-gray-200">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Jina la Mwanafunzi</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Kuwepo</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Hajakuwepo</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Ruhusa</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Jumla ya Siku</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="summaryTableBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Summary data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Jedwali la Mahudhurio ya Kina kwa Kila Siku -->
+                    <div id="monthlyDetailedReportSection" class="hidden bg-gray-50 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-semibold text-center text-gray-800 mb-4">Ripoti ya Kina ya Mahudhurio (<span id="detailedReportDateRange"></span>)</h3>
+                        <div class="overflow-x-auto rounded-lg shadow-md border border-gray-200">
+                            <table class="bordered-table min-w-full">
+                                <thead class="bg-gray-200 sticky-header">
+                                    <tr id="detailedReportHeader">
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider sticky-col bg-gray-200 z-10">Jina la Mwanafunzi</th>
+                                        <!-- Dates will be appended here -->
+                                    </tr>
+                                </thead>
+                                <tbody id="detailedReportBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Detailed attendance data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div> <!-- End of reportContent -->
+                
+                <!-- Loading indicator -->
+                <div id="loadingIndicator" class="flex justify-center items-center h-24" style="display: none;">
+                    <div class="loader"></div>
+                </div>
+
+                <div class="flex flex-col md:flex-row justify-center mt-8 space-y-4 md:space-y-0 md:space-x-4">
+                    <!-- Changed to link to the new export page -->
+                    <button class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out transform hover:scale-105" onclick="goToExportPage()">Export Ripoti</button>
+                    <!-- Removed direct export buttons from this page -->
+                </div>
+
+            </main>
+
+            <footer class="text-center text-gray-500 pt-6 border-t border-gray-200 mt-10">
+                <p>&copy; <span id="currentYear"></span> Powered by Wella's Life, Haki zote zimehifadhiwa.</p>
+            </footer>
+
+        </div>
+    </div> <!-- End of mainContent -->
+    
+    <script>
+        // Check if IndexedDB is supported by the browser
+        if (!window.indexedDB) {
+            alert("Kivinjari chako hakitegemezi IndexedDB. Tafadhali tumia kivinjari cha kisasa.");
+        }
+
+        const dbName = 'attendanceDB';
+        const dbVersion = 1;
+        let db;
+        let students = [];
+        let selectedStartDate;
+        let selectedEndDate;
+
+        // Initialize the database connection
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName, dbVersion);
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    const studentStore = db.createObjectStore('students', { keyPath: 'id', autoIncrement: true });
+                    studentStore.createIndex('regNumber', 'regNumber', { unique: true });
+                    console.log('IndexedDB: Object store "students" created successfully.');
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log('IndexedDB: Database opened successfully.');
+                    loadStudents();
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB: Database error:", event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        // Load all students from IndexedDB
+        async function loadStudents() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['students'], 'readonly');
+                const store = transaction.objectStore('students');
+                const request = store.getAll();
+
+                request.onsuccess = (event) => {
+                    students = event.target.result;
+                    console.log('IndexedDB: Students loaded:', students);
+                    sortStudents(); // Sort students after loading
+                    generateReport(); // Generate report on initial load with default dates
+                    resolve(students);
+                };
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB: Error loading students:", event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        // Function to sort students (K-M, then A-Z)
+        function sortStudents() {
+            students.sort((a, b) => {
+                // Primary sort by gender: K (Female) then M (Male)
+                const genderOrder = { 'K': 1, 'M': 2 }; // Changed for K-M sorting
+                const genderA = genderOrder[String(a.gender || '').toUpperCase()];
+                const genderB = genderOrder[String(b.gender || '').toUpperCase()];
+
+                if (genderA !== genderB) {
+                    return genderA - genderB;
+                }
+                // Secondary sort by name (A-Z)
+                const nameA = String(a.name || '').toUpperCase();
+                const nameB = String(b.name || '').toUpperCase();
+                if (nameA < nameB) return -1;
+                if (nameA > nameB) return 1;
+                return 0; // Names and genders are the same
+            });
+        }
+
+        // Function to get all days in a given date range
+        function getDaysInRange(startDateStr, endDateStr) {
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+            const days = [];
+            let currentDate = new Date(startDate);
+
+            while (currentDate <= endDate) {
+                days.push(currentDate.toISOString().slice(0, 10));
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            return days;
+        }
+
+        // Function to generate and display the report based on selected dates
+        function generateReport() {
+            const startDateInput = document.getElementById('startDateInput');
+            const endDateInput = document.getElementById('endDateInput');
+            selectedStartDate = startDateInput.value;
+            selectedEndDate = endDateInput.value;
+
+            if (!selectedStartDate || !selectedEndDate) {
+                // Do not alert here, as it might be initial load
+                document.getElementById('genderSummarySection').classList.add('hidden');
+                document.getElementById('monthlySummarySection').classList.add('hidden');
+                document.getElementById('monthlyDetailedReportSection').classList.add('hidden');
+                return;
+            }
+
+            const daysInRange = getDaysInRange(selectedStartDate, selectedEndDate);
+
+            // Update report titles
+            const reportDateRangeText = `${selectedStartDate} hadi ${selectedEndDate}`;
+            document.getElementById('genderReportDateRange').textContent = reportDateRangeText;
+            document.getElementById('reportDateRange').textContent = reportDateRangeText;
+            document.getElementById('detailedReportDateRange').textContent = reportDateRangeText;
+
+            renderOverallGenderSummary(daysInRange);
+            renderMonthlySummary(daysInRange);
+            renderMonthlyDetailedReport(daysInRange);
+
+            document.getElementById('genderSummarySection').classList.remove('hidden');
+            document.getElementById('monthlySummarySection').classList.remove('hidden');
+            document.getElementById('monthlyDetailedReportSection').classList.remove('hidden');
+        }
+
+        // Render the overall gender-based attendance summary
+        function renderOverallGenderSummary(daysInRange) {
+            const genderSummaryBody = document.getElementById('genderSummaryBody');
+            genderSummaryBody.innerHTML = '';
+
+            if (students.length === 0) {
+                genderSummaryBody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Hakuna wanafunzi waliosajiliwa bado.</td></tr>`;
+                return;
+            }
+
+            let malePresent = 0, maleAbsent = 0, maleExcused = 0;
+            let femalePresent = 0, femaleAbsent = 0, femaleExcused = 0;
+
+            students.forEach(student => {
+                daysInRange.forEach(day => {
+                    const status = student.attendance[day] || 'Hajachaguliwa';
+                    if (String(student.gender || '').toUpperCase() === 'M') {
+                        switch (status) {
+                            case 'Kuwepo': malePresent++; break;
+                            case 'Hajakuwepo': maleAbsent++; break;
+                            case 'Ruhusa': maleExcused++; break;
+                        }
+                    } else if (String(student.gender || '').toUpperCase() === 'K') {
+                        switch (status) {
+                            case 'Kuwepo': femalePresent++; break;
+                            case 'Hajakuwepo': femaleAbsent++; break;
+                            case 'Ruhusa': femaleExcused++; break;
+                        }
+                    }
+                });
+            });
+
+            const maleRow = document.createElement('tr');
+            maleRow.classList.add('hover:bg-gray-100');
+            maleRow.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Wavulana</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-green-700 font-semibold">${malePresent}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-red-700 font-semibold">${maleAbsent}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-yellow-700 font-semibold">${maleExcused}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-blue-700 font-semibold">${malePresent + maleAbsent + maleExcused}</td>
+            `;
+            genderSummaryBody.appendChild(maleRow);
+
+            const femaleRow = document.createElement('tr');
+            femaleRow.classList.add('hover:bg-gray-100');
+            femaleRow.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Wasichana</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-green-700 font-semibold">${femalePresent}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-red-700 font-semibold">${femaleAbsent}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-yellow-700 font-semibold">${femaleExcused}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-blue-700 font-semibold">${femalePresent + femaleAbsent + femaleExcused}</td>
+            `;
+            genderSummaryBody.appendChild(femaleRow);
+        }
+
+
+        // Render the per-student summary table for the date range
+        function renderMonthlySummary(daysInRange) {
+            const summaryTableBody = document.getElementById('summaryTableBody');
+            summaryTableBody.innerHTML = '';
+
+            if (students.length === 0) {
+                summaryTableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Hakuna wanafunzi waliosajiliwa bado.</td></tr>`;
+                return;
+            }
+
+            students.forEach(student => {
+                let presentCount = 0;
+                let absentCount = 0;
+                let excusedCount = 0;
+
+                daysInRange.forEach(day => {
+                    const status = student.attendance[day] || 'Hajachaguliwa';
+                    switch (status) {
+                        case 'Kuwepo': presentCount++; break;
+                        case 'Hajakuwepo': absentCount++; break;
+                        case 'Ruhusa': excusedCount++; break;
+                    }
+                });
+
+                const row = document.createElement('tr');
+                row.classList.add('hover:bg-gray-100');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${String(student.name || '')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-green-700 font-semibold">${presentCount}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-red-700 font-semibold">${absentCount}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-yellow-700 font-semibold">${excusedCount}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-blue-700 font-semibold">${daysInRange.length}</td>
+                `;
+                summaryTableBody.appendChild(row);
+            });
+        }
+
+        // Render the detailed attendance report table for the date range
+        function renderMonthlyDetailedReport(daysInRange) {
+            const detailedReportHeader = document.getElementById('detailedReportHeader');
+            const detailedReportBody = document.getElementById('detailedReportBody');
+            
+            // Clear previous header and body
+            detailedReportHeader.innerHTML = `<th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider sticky-col bg-gray-200 z-10">Jina la Mwanafunzi</th>`;
+            detailedReportBody.innerHTML = '';
+
+            if (students.length === 0) {
+                detailedReportBody.innerHTML = `<tr><td colspan="${daysInRange.length + 1}" class="px-6 py-4 text-center text-gray-500">Hakuna wanafunzi waliosajiliwa bado.</td></tr>`;
+                return;
+            }
+
+            // Add dates to the header
+            daysInRange.forEach(day => {
+                const th = document.createElement('th');
+                th.classList.add('px-2', 'py-3', 'text-center', 'text-xs', 'font-medium', 'text-gray-700', 'uppercase', 'tracking-wider', 'attendance-cell');
+                th.textContent = new Date(day).getDate(); // Just the day number
+                detailedReportHeader.appendChild(th);
+            });
+
+            // Add student rows and attendance data
+            students.forEach(student => {
+                const row = document.createElement('tr');
+                row.classList.add('hover:bg-gray-100');
+
+                const nameCell = document.createElement('td');
+                nameCell.classList.add('px-6', 'py-4', 'whitespace-nowrap', 'text-sm', 'font-medium', 'text-gray-900', 'sticky-col', 'bg-white', 'z-0');
+                nameCell.textContent = String(student.name || '');
+                row.appendChild(nameCell);
+
+                daysInRange.forEach(day => {
+                    const status = student.attendance[day] || 'Hajachaguliwa';
+                    const cell = document.createElement('td');
+                    cell.classList.add('px-2', 'py-2', 'whitespace-nowrap', 'attendance-cell');
+                    
+                    let statusClass = 'unknown-day';
+                    let statusText = '-';
+
+                    switch (status) {
+                        case 'Kuwepo': 
+                            statusClass = 'present-day'; 
+                            statusText = 'P'; 
+                            break;
+                        case 'Hajakuwepo': 
+                            statusClass = 'absent-day'; 
+                            statusText = 'A'; 
+                            break;
+                        case 'Ruhusa': 
+                            statusClass = 'excused-day'; 
+                            statusText = 'E'; 
+                            break;
+                    }
+                    cell.classList.add(statusClass);
+                    cell.textContent = statusText;
+                    row.appendChild(cell);
+                });
+                detailedReportBody.appendChild(row);
+            });
+        }
+
+        // Function to navigate to the export page with selected dates
+        function goToExportPage() {
+            const startDate = document.getElementById('startDateInput').value;
+            const endDate = document.getElementById('endDateInput').value;
+
+            if (!startDate || !endDate) {
+                alert("Tafadhali chagua tarehe ya kuanza na tarehe ya kumaliza kabla ya kusafirisha.");
+                return;
+            }
+
+            window.location.href = `export_report.html?startDate=${startDate}&endDate=${endDate}`;
+        }
+        
+        // Initial setup when DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            await openDatabase(); 
+
+            // Set default date range to the last 15 days
+            const today = new Date();
+            const endDate = today.toISOString().slice(0, 10);
+            const startDate = new Date(today);
+            startDate.setDate(today.getDate() - 14); // 15 days including today
+            const startDateStr = startDate.toISOString().slice(0, 10);
+
+            document.getElementById('startDateInput').value = startDateStr;
+            document.getElementById('endDateInput').value = endDate;
+
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+        });
+    </script>
+</body>
+</html>
