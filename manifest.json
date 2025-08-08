@@ -1,14 +1,20 @@
 {
-  "name": "Mahudhurio App",
+  "name": "Mfumo wa Mahudhurio",
   "short_name": "Mahudhurio",
-  "start_url": "/index.html",
+  "description": "Mfumo rahisi wa kusimamia mahudhurio ya wanafunzi",
+  "start_url": "/dashboard.html",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#007bff",
+  "theme_color": "#2196F3",
   "icons": [
     {
       "src": "/rsz_capture.png",
-      "sizes": "515x512",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/rsz_capture.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]
