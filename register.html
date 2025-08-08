@@ -16,16 +16,25 @@
         */
         body {
             font-family: 'Poppins', sans-serif;
-            background-color: #f0f2f5;
-            margin: 0;
+            /* Animated gradient background: Yellow, Light Blue, Light Green, Blue */
+            background: linear-gradient(135deg, #FFEB3B, #42A5F5, #8BC34A, #2196F3);
+            background-size: 400% 400%;
+            animation: gradientAnimation 15s ease infinite;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
             color: #333;
             padding: 20px;
             box-sizing: border-box;
+            /* Removed background-color and margin: 0; as they are handled by the gradient */
+        }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
         .register-card {
@@ -36,7 +45,7 @@
             width: 100%;
             max-width: 400px;
             text-align: center;
-            flex-grow: 1;
+            flex-grow: 0; /* Changed to 0 to prevent excessive growth */
         }
 
         .register-card h1 {
@@ -68,6 +77,7 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             box-sizing: border-box;
+            font-family: 'Poppins', sans-serif; /* Ensure input uses Poppins */
         }
 
         .register-btn {
@@ -80,6 +90,7 @@
             cursor: pointer;
             width: 100%;
             transition: background-color 0.3s ease;
+            font-family: 'Poppins', sans-serif; /* Ensure button uses Poppins */
         }
 
         .register-btn:hover:not(:disabled) {
@@ -103,33 +114,81 @@
             text-decoration: underline;
         }
 
-        /* Styles for the message box */
-        #messageBox {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 5px;
-            font-size: 0.9em;
-            text-align: center;
-            display: none;
-        }
-
-        #messageBox.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        #messageBox.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
         .footer {
             margin-top: 40px;
             text-align: center;
             font-size: 0.9em;
             color: #777;
+        }
+
+        /* Custom Message Box Styles */
+        #customMessageOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px); /* Optional: add blur effect */
+            visibility: hidden; /* Hidden by default */
+            opacity: 0; /* Hidden by default */
+            transition: visibility 0s, opacity 0.3s ease-in-out;
+        }
+        #customMessageOverlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+        #customMessageBox {
+            background-color: #fff;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: translateY(-20px);
+            opacity: 0;
+            animation: fadeInMessage 0.3s forwards;
+            position: relative;
+        }
+        #customMessageBox.error {
+            border: 2px solid #ef4444; /* Red border for errors */
+        }
+        #customMessageBox.success {
+            border: 2px solid #22c55e; /* Green border for success */
+        }
+        #customMessageBox h4 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1e3a8a; /* Dark blue */
+            margin-bottom: 1rem;
+        }
+        #customMessageBox p {
+            font-size: 1rem;
+            color: #4b5563; /* Gray */
+            margin-bottom: 1.5rem;
+        }
+        #customMessageBox button {
+            background-color: #3b82f6; /* Blue */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            transition: background-color 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        #customMessageBox button:hover {
+            background-color: #2563eb; /* Darker blue on hover */
+        }
+        @keyframes fadeInMessage {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
     </style>
 </head>
@@ -141,15 +200,27 @@
 
     <div class="input-group">
         <label for="email">Barua pepe (Jina la Mtumiaji):</label>
-        <input type="email" id="email" name="email">
+        <input type="email" id="email" name="email" autocomplete="username">
     </div>
 
     <div class="input-group">
         <label for="password">Neno la Siri:</label>
-        <input type="password" id="password" name="password">
+        <input type="password" id="password" name="password" autocomplete="new-password">
+    </div>
+
+    <div class="input-group">
+        <label for="confirmPassword">Thibitisha Neno la Siri:</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password">
     </div>
     
-    <div id="messageBox"></div>
+    <!-- Custom message box structure -->
+    <div id="customMessageOverlay" class="hidden">
+        <div id="customMessageBox">
+            <h4 id="messageBoxTitle"></h4>
+            <p id="messageBoxContent"></p>
+            <button onclick="closeMessageBox()">Sawa</button>
+        </div>
+    </div>
 
     <button class="register-btn" onclick="handleRegister()">
         Jisajili
@@ -163,17 +234,37 @@
 </footer>
 
 <script>
+    let db; // Global variable for IndexedDB instance
+
     /**
-     * Huonyesha ujumbe wa arifa kwenye UI.
+     * Huonyesha ujumbe wa arifa kwenye UI kwa kutumia modal maalum.
+     * @param {string} title Kichwa cha ujumbe.
      * @param {string} message Ujumbe wa kuonyeshwa.
      * @param {string} type Aina ya ujumbe ('success' au 'error').
      */
-    const showMessage = (message, type) => {
-        const messageBox = document.getElementById('messageBox');
-        messageBox.textContent = message;
-        messageBox.className = type;
-        messageBox.style.display = 'block';
+    const showMessage = (title, message, type) => {
+        const overlay = document.getElementById('customMessageOverlay');
+        const messageBox = document.getElementById('customMessageBox');
+        const messageBoxTitle = document.getElementById('messageBoxTitle');
+        const messageBoxContent = document.getElementById('messageBoxContent');
+
+        messageBoxTitle.textContent = title;
+        messageBoxContent.textContent = message;
+        messageBox.className = type; // Apply success or error class for styling
+        
+        overlay.classList.add('active'); // Show overlay
+        overlay.classList.remove('hidden'); // Ensure it's not hidden by display: none
     };
+
+    /**
+     * Hufunga ujumbe wa arifa.
+     */
+    const closeMessageBox = () => {
+        const overlay = document.getElementById('customMessageOverlay');
+        overlay.classList.remove('active'); // Hide overlay
+        overlay.classList.add('hidden'); // Hide completely
+    };
+
 
     /**
      * Hufungua database ya IndexedDB.
@@ -184,16 +275,21 @@
             const request = window.indexedDB.open("AttendanceAppDB", 1);
             
             request.onerror = event => {
-                reject("Database error: " + event.target.errorCode);
+                console.error("IndexedDB Database error:", event.target.error);
+                reject(new Error("Database error: " + event.target.error.message));
             };
 
             request.onsuccess = event => {
-                resolve(event.target.result);
+                db = event.target.result; // Assign to global db variable
+                resolve(db);
             };
 
             request.onupgradeneeded = event => {
-                const db = event.target.result;
-                db.createObjectStore("users", { keyPath: "email" });
+                const upgradeDb = event.target.result;
+                if (!upgradeDb.objectStoreNames.contains("users")) {
+                    upgradeDb.createObjectStore("users", { keyPath: "email" });
+                    console.log("IndexedDB: Object store 'users' created.");
+                }
             };
         });
     };
@@ -204,66 +300,141 @@
      * @returns {Promise<string>} Ahadi inayorudisha neno la siri lililohash.
      */
     async function hashPassword(password) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashedPassword = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        return hashedPassword;
+        try {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashedPassword = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashedPassword;
+        } catch (error) {
+            console.error("Error hashing password:", error);
+            throw new Error("Kosa wakati wa kuhash nenosiri.");
+        }
     }
 
     /**
      * Inashughulikia mchakato wa usajili wa mtumiaji.
      */
     window.handleRegister = async function() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const registerBtn = document.querySelector('.register-btn');
 
-        if (!email || !password) {
-            showMessage("Tafadhali jaza sehemu zote.", 'error');
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+
+        // Disable button to prevent multiple submissions
+        registerBtn.disabled = true;
+        registerBtn.textContent = "Inajisajili...";
+
+        if (!email || !password || !confirmPassword) {
+            showMessage("Kosa la Kuingiza", "Tafadhali jaza sehemu zote.", 'error');
+            registerBtn.disabled = false;
+            registerBtn.textContent = "Jisajili";
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showMessage("Kosa la Nenosiri", "Neno la siri na uthibitisho wake havifanani.", 'error');
+            passwordInput.value = '';
+            confirmPasswordInput.value = '';
+            registerBtn.disabled = false;
+            registerBtn.textContent = "Jisajili";
+            return;
+        }
+
+        if (password.length < 6) {
+            showMessage("Nenosiri Dhaifu", "Nenosiri lazima liwe na angalau herufi 6.", 'error');
+            passwordInput.value = '';
+            confirmPasswordInput.value = '';
+            registerBtn.disabled = false;
+            registerBtn.textContent = "Jisajili";
             return;
         }
 
         try {
-            const db = await openDatabase();
-            const transaction = db.transaction(["users"], "readwrite");
-            const objectStore = transaction.objectStore("users");
-
-            // Angalia kama barua pepe tayari ipo
-            const existingUser = await new Promise((resolve, reject) => {
-                const getRequest = objectStore.get(email);
-                getRequest.onsuccess = () => resolve(getRequest.result);
-                getRequest.onerror = () => reject(getRequest.error);
-            });
-
-            if (existingUser) {
-                showMessage("Barua pepe hii tayari imesajiliwa.", 'error');
-                return;
+            // Ensure db is opened
+            if (!db) {
+                db = await openDatabase();
             }
 
-            // Hifadhi data ndani ya transaction ile ile
+            // --- HAPA NDIKO KUREKEBISHA KOSA KUU ---
+            // Hash nenosiri na tengeneza newUser object HAPA KWANZA, kabla ya transaction.
             const hashedPassword = await hashPassword(password);
             const newUser = { email: email, password: hashedPassword };
 
+            // Wrap the entire IndexedDB transaction logic in a single Promise
             await new Promise((resolve, reject) => {
-                const addRequest = objectStore.add(newUser);
-                addRequest.onsuccess = () => resolve();
-                addRequest.onerror = () => reject(addRequest.error);
+                const transaction = db.transaction(["users"], "readwrite");
+                const objectStore = transaction.objectStore("users");
+
+                transaction.oncomplete = () => {
+                    resolve(); // Resolve the promise when the transaction completes successfully
+                };
+                transaction.onerror = (event) => {
+                    console.error("Transaction error:", event.target.error);
+                    // Reject with a more informative message from the error object itself
+                    reject(new Error("Transaction failed: " + (event.target.error ? event.target.error.message : "Unknown error")));
+                };
+
+                const getRequest = objectStore.get(email);
+                getRequest.onsuccess = (event) => {
+                    const existingUser = event.target.result;
+                    if (existingUser) {
+                        // User already exists, reject the promise and abort the transaction
+                        reject(new Error("Barua pepe hii tayari imesajiliwa."));
+                        transaction.abort(); 
+                    } else {
+                        // If user does not exist, proceed to add them within the same transaction
+                        const addRequest = objectStore.add(newUser); // newUser is now correctly defined and available
+                        addRequest.onerror = (event) => {
+                            console.error("Failed to add user request error:", event.target.error);
+                            reject(new Error("Imeshindwa kuongeza mtumiaji: " + (event.target.error ? event.target.error.message : "Unknown error")));
+                            transaction.abort(); // Abort on add error
+                        };
+                        // No need for addRequest.onsuccess here, transaction.oncomplete will handle overall success
+                    }
+                };
+                getRequest.onerror = (event) => {
+                    console.error("Failed to check existing user request error:", event.target.error);
+                    reject(new Error("Imeshindwa kuangalia mtumiaji aliyepo."));
+                    transaction.abort(); // Abort on get error
+                };
             });
             
-            showMessage("Usajili umefanikiwa! Sasa unaweza kuingia.", 'success');
+            // If the transaction promise resolves, it means all operations within it succeeded
+            showMessage("Usajili Umefanikiwa", "Hongera! Akaunti yako imeundwa. Sasa unaweza kuingia.", 'success');
+            
+            // Clear inputs after successful registration
+            emailInput.value = '';
+            passwordInput.value = '';
+            confirmPasswordInput.value = '';
+
             setTimeout(() => {
-                window.location.href = "login.html";
-            }, 2000);
+                window.location.href = "login.html"; // Redirect to login page
+            }, 3000); // Redirect after 3 seconds
 
         } catch (error) {
-            showMessage(`Kosa la database: ${error.message || error}`, 'error');
-            console.error("IndexedDB error:", error);
+            showMessage("Kosa la Usajili", `Kosa lililotokea wakati wa kusajili: ${error.message || error}`, 'error');
+            console.error("Registration error:", error);
+        } finally {
+            // Ensure button is re-enabled and text reset regardless of success or failure
+            registerBtn.disabled = false;
+            registerBtn.textContent = "Jisajili";
         }
     };
 
-    // Weka mwaka wa sasa kwenye footer
-    document.getElementById('currentYear').textContent = new Date().getFullYear();
+    // Weka mwaka wa sasa kwenye footer wakati ukurasa unapakia
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+        openDatabase().catch(err => {
+            console.error("Failed to open IndexedDB:", err);
+            showMessage("Kosa la Hifadhidata", "Imeshindwa kufungua hifadhidata ya ndani. Huenda kivinjari chako hakitegemei IndexedDB.", 'error');
+        });
+    });
 </script>
 
 </body>
